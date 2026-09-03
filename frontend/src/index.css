@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #08090C;
+  --bg-sidebar: #0B0D12;
+  --panel: #0E1015;
+  --panel-2: #12151D;
+  --border: #1E2230;
+  --border-strong: #2C3040;
+  --violet: #8B7FE8;
+  --red: #E15A5A;
+  --teal: #6FBFA0;
+  --amber: #E3A23C;
+  --text-primary: #E7E6EE;
+  --text-secondary: #8A8CA0;
+  --text-muted: #565A6B;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text-primary);
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}

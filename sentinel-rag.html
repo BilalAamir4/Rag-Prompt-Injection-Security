@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentinel RAG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#08090C;
+    --bg-sidebar:#0B0D12;
+    --panel:#0E1015;
+    --panel-2:#12151D;
+    --border:#1E2230;
+    --border-strong:#2C3040;
+    --violet:#8B7FE8;
+    --violet-dim:rgba(139,127,232,0.14);
+    --red:#E15A5A;
+    --red-dim:rgba(225,90,90,0.14);
+    --teal:#6FBFA0;
+    --teal-dim:rgba(111,191,160,0.14);
+    --amber:#E3A23C;
+    --amber-dim:rgba(227,162,60,0.14);
+    --text-primary:#E7E6EE;
+    --text-secondary:#8A8CA0;
+    --text-muted:#565A6B;
+    --sans:'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --mono:'IBM Plex Mono', 'SF Mono', monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    background:var(--bg);
+    color:var(--text-primary);
+    font-family:var(--sans);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  svg{display:block;}
+  .icon{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+
+  .app{display:grid;grid-template-columns:190px 1fr;min-height:100vh;}
+
+  /* ---------------- sidebar ---------------- */
+  .sidebar{
+    background:var(--bg-sidebar);
+    border-right:1px solid var(--border);
+    padding:22px 14px;
+    display:flex;flex-direction:column;
+    position:sticky;top:0;height:100vh;
+  }
+  .brand{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin-bottom:28px;padding:0 6px;}
+  .brand .icon{width:19px;height:19px;color:var(--violet);}
+  .navlist{list-style:none;margin:0;padding:0;}
+  .navitem{
+    display:flex;align-items:center;gap:10px;
+    padding:9px 10px;border-radius:7px;
+    font-size:13px;color:var(--text-secondary);
+    margin-bottom:2px;cursor:pointer;
+    user-select:none;
+  }
+  .navitem:hover{background:rgba(255,255,255,0.03);}
+  .navitem.active{background:var(--violet-dim);color:var(--violet);}
+  .navitem.active .icon{color:var(--violet);}
+
+  .sidebar-foot{margin-top:auto;background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:11px 12px;}
+  .sidebar-foot .lbl{font-size:10px;color:var(--text-muted);margin-bottom:7px;}
+
+  .toggle{width:30px;height:16px;border-radius:9px;position:relative;cursor:pointer;flex:none;transition:background 0.15s ease;}
+  .toggle .knob{width:12px;height:12px;border-radius:50%;position:absolute;top:2px;left:2px;transition:transform 0.15s ease, background 0.15s ease;}
+  .toggle.off{background:var(--border-strong);}
+  .toggle.off .knob{background:var(--text-secondary);transform:translateX(0);}
+  .toggle.on{background:var(--violet-dim);}
+  .toggle.on .knob{background:var(--violet);transform:translateX(14px);}
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;}
+  .toggle-row .state{font-size:11.5px;color:var(--text-secondary);}
+  .toggle.on ~ .state, .toggle-row .toggle.on + .state{color:var(--violet);}
+
+  /* ---------------- content shell ---------------- */
+  .content{padding:26px 34px 60px;max-width:980px;}
+  .page{display:none;}
+  .page.active{display:block;}
+  .pagehead{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px;}
+  .pagehead h1{font-size:19px;font-weight:600;margin:0;}
+  .pagehead .sub{font-size:12.5px;color:var(--text-secondary);margin-top:4px;}
+  .btn{
+    font-size:12.5px;padding:8px 14px;border-radius:7px;font-weight:500;
+    cursor:pointer;border:1px solid transparent;white-space:nowrap;
+  }
+  .btn.primary{background:var(--violet);color:#181229;}
+  .btn.ghost{background:transparent;border-color:var(--border-strong);color:var(--text-primary);}
+  .btn.ghost:hover{background:rgba(255,255,255,0.03);}
+  .btn.danger-ghost{background:transparent;border-color:var(--red);color:var(--red);}
+
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px 18px;}
+  .badge{font-size:10.5px;padding:3px 9px;border-radius:5px;font-weight:500;display:inline-block;}
+  .badge.red{background:var(--red-dim);color:var(--red);}
+  .badge.teal{background:var(--teal-dim);color:var(--teal);}
+  .badge.amber{background:var(--amber-dim);color:var(--amber);}
+  .badge.gray{background:rgba(255,255,255,0.06);color:var(--text-secondary);}
+
+  /* ---------------- Live trace page ---------------- */
+  .trace-row{display:flex;align-items:center;margin-bottom:14px;}
+  .node{text-align:center;flex:none;}
+  .node .circle{width:32px;height:32px;border-radius:50%;background:#171A22;border:1px solid var(--border-strong);display:flex;align-items:center;justify-content:center;margin:0 auto 6px;}
+  .node .circle .icon{width:14px;height:14px;color:var(--text-secondary);}
+  .node.flagged .circle{width:38px;height:38px;background:var(--red-dim);border:1.5px solid var(--red);}
+  .node.flagged .circle .icon{color:var(--red);width:16px;height:16px;}
+  .node .lbl{font-size:10px;color:var(--text-secondary);}
+  .node.flagged .lbl{color:var(--red);}
+  .line{flex:1;height:1px;background:var(--border-strong);}
+  .line.danger{background:var(--red);}
+  .line.safe{background:var(--teal);}
+
+  .metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
+  .metric-grid .card{padding:12px 14px;}
+  .metric-grid .lbl{font-size:10.5px;color:var(--text-secondary);margin-bottom:2px;}
+  .metric-grid .val{font-size:18px;font-weight:600;}
+  .sparkbars{display:flex;align-items:flex-end;gap:2px;height:16px;margin-top:8px;}
+  .sparkbars span{width:5px;background:var(--border-strong);border-radius:1px;}
+  .sparkbars span.hi{background:var(--violet);}
+
+  .two-col{display:grid;grid-template-columns:1.4fr 1fr;gap:12px;}
+  .bubble-user{background:#171A22;border:1px solid var(--border-strong);border-radius:9px 9px 2px 9px;padding:9px 13px;font-size:13px;max-width:80%;margin-left:auto;margin-bottom:10px;}
+  .answer-text{font-size:13px;line-height:1.65;max-width:92%;}
+  .banner{display:flex;align-items:center;gap:6px;border-radius:6px;padding:7px 10px;width:fit-content;margin-top:10px;font-size:11px;}
+  .banner.safe{background:var(--teal-dim);color:var(--teal);}
+  .banner.danger{background:var(--red-dim);color:var(--red);}
+  .banner .icon{width:14px;height:14px;}
+
+  .side-stack .card{margin-bottom:10px;}
+  .flagged-doc{display:flex;align-items:center;gap:8px;font-size:12px;}
+  .flagged-doc .dot{width:6px;height:6px;border-radius:50%;background:var(--red);flex:none;}
+  .runrow{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px;}
+  .runrow:last-child{border-bottom:none;}
+  .runrow .t{font-family:var(--mono);color:var(--text-secondary);}
+
+  /* ---------------- Chat page ---------------- */
+  .chatwrap{display:flex;flex-direction:column;height:560px;}
+  .thread{flex:1;overflow-y:auto;padding:4px 2px 10px;}
+  .msg-row{margin-bottom:20px;}
+  .msg-row.user{text-align:right;}
+  .ai-block{max-width:78%;}
+  .citerow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  .citechip{display:flex;align-items:center;gap:7px;background:var(--panel-2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:11.5px;color:var(--text-secondary);}
+  .filetag{font-family:var(--mono);font-size:9.5px;font-weight:600;padding:2px 5px;border-radius:4px;}
+  .filetag.pdf{background:var(--red-dim);color:var(--red);}
+  .filetag.doc{background:var(--teal-dim);color:var(--teal);}
+  .chat-input{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-top:10px;}
+  .chat-input input{flex:1;background:transparent;border:none;outline:none;color:var(--text-primary);font-size:13px;font-family:var(--sans);}
+  .chat-input input::placeholder{color:var(--text-muted);}
+  .iconbtn{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--violet);color:#181229;flex:none;cursor:pointer;}
+  .iconbtn .icon{color:#181229;}
+  .hidden{display:none !important;}
+
+  /* ---------------- Documents page ---------------- */
+  .collection-row{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+  .collection-chip{font-size:12px;color:var(--text-secondary);background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:7px 13px;}
+  .collection-chip.active{color:var(--violet);border-color:var(--violet);background:var(--violet-dim);}
+  .doc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .doc-card{border:1px solid var(--border);background:var(--panel);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:9px;}
+  .doc-card.warn{border-color:rgba(225,90,90,0.4);}
+  .doc-top{display:flex;align-items:center;gap:9px;}
+  .fname{font-size:12.5px;font-weight:500;}
+  .fmeta{font-family:var(--mono);font-size:10.5px;color:var(--text-muted);}
+  .dropzone{grid-column:span 3;border:1.5px dashed var(--border-strong);border-radius:10px;padding:22px;text-align:center;color:var(--text-muted);font-size:12.5px;}
+  .dropzone .icon{width:20px;height:20px;margin:0 auto 8px;color:var(--text-secondary);}
+
+  /* ---------------- Audit log page ---------------- */
+  .filterbar{display:flex;gap:8px;margin-bottom:14px;}
+  .filterbtn{font-size:12px;color:var(--text-secondary);border:1px solid var(--border-strong);border-radius:7px;padding:6px 13px;cursor:pointer;}
+  .filterbtn.active{color:var(--violet);border-color:var(--violet);background:var(--violet-dim);}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  th{text-align:left;font-size:10.5px;color:var(--text-muted);font-weight:500;padding:8px 10px;border-bottom:1px solid var(--border);}
+  td{padding:10px;border-bottom:1px solid var(--border);}
+  tr.logrow.hidden{display:none;}
+  td.time{font-family:var(--mono);color:var(--text-secondary);white-space:nowrap;}
+  td.sim{font-family:var(--mono);color:var(--text-secondary);}
+
+  /* ---------------- Settings page ---------------- */
+  .setting-row{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:16px 0;border-bottom:1px solid var(--border);}
+  .setting-row:last-child{border-bottom:none;}
+  .setting-row .title{font-size:13.5px;font-weight:500;margin-bottom:4px;}
+  .setting-row .desc{font-size:12px;color:var(--text-secondary);max-width:440px;line-height:1.55;}
+  .infolist .row{display:flex;justify-content:space-between;font-size:12.5px;padding:9px 0;border-bottom:1px solid var(--border);}
+  .infolist .row:last-child{border-bottom:none;}
+  .infolist .row span:first-child{color:var(--text-secondary);}
+  input[type=range]{width:220px;accent-color:var(--violet);}
+
+  @media (max-width:780px){
+    .app{grid-template-columns:64px 1fr;}
+    .navitem span.label, .brand span.label, .sidebar-foot{display:none;}
+    .content{padding:20px 16px 50px;}
+    .metric-grid, .doc-grid{grid-template-columns:repeat(2,1fr)}
+    .dropzone{grid-column:span 2;}
+    .two-col{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/></svg>
+      <span class="label">Sentinel</span>
+    </div>
+    <ul class="navlist">
+      <li class="navitem active" data-page="trace">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M3 12h4l2 6 4-14 2 8h6"/></svg>
+        <span class="label">Live trace</span>
+      </li>
+      <li class="navitem" data-page="chat">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M4 5h16v10H8l-4 4V5z"/></svg>
+        <span class="label">Chat</span>
+      </li>
+      <li class="navitem" data-page="documents">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M4 4h11l4 4v12H4V4z"/><path d="M15 4v4h4"/></svg>
+        <span class="label">Documents</span>
+      </li>
+      <li class="navitem" data-page="audit">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        <span class="label">Audit log</span>
+      </li>
+      <li class="navitem" data-page="settings">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
+        <span class="label">Settings</span>
+      </li>
+    </ul>
+
+    <div class="sidebar-foot">
+      <div class="lbl">Mitigation</div>
+      <div class="toggle-row">
+        <div class="toggle on" id="sidebarToggle"><div class="knob"></div></div>
+        <span class="state" id="sidebarToggleState">On</span>
+      </div>
+    </div>
+  </aside>
+
+  <main class="content">
+
+    <!-- ============ LIVE TRACE ============ -->
+    <section class="page active" id="page-trace">
+      <div class="pagehead">
+        <div>
+          <h1>Live trace</h1>
+          <div class="sub">Real-time view of the RAG security pipeline</div>
+        </div>
+        <div class="btn primary">Run test</div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px;padding:20px 20px 16px;">
+        <div class="trace-row">
+          <div class="node"><div class="circle"><svg class="icon" viewBox="0 0 24 24"><path d="M4 5h16v10H8l-4 4V5z"/></svg></div><div class="lbl">Query</div></div>
+          <div class="line"></div>
+          <div class="node"><div class="circle"><svg class="icon" viewBox="0 0 24 24"><path d="M12 3l1.5 5L19 9l-5.5 1L12 15l-1.5-5L5 9l5.5-1L12 3z"/></svg></div><div class="lbl">Embed</div></div>
+          <div class="line"></div>
+          <div class="node"><div class="circle"><svg class="icon" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="7" ry="3"/><path d="M5 5v14c0 1.7 3.1 3 7 3s7-1.3 7-3V5"/><path d="M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/></svg></div><div class="lbl">Retrieve</div></div>
+          <div class="line danger"></div>
+          <div class="node flagged"><div class="circle"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/></svg></div><div class="lbl">Scan</div></div>
+          <div class="line safe"></div>
+          <div class="node"><div class="circle"><svg class="icon" viewBox="0 0 24 24"><path d="M12 3l1.5 5L19 9l-5.5 1L12 15l-1.5-5L5 9l5.5-1L12 3z"/></svg></div><div class="lbl">Generate</div></div>
+        </div>
+      </div>
+
+      <div class="metric-grid">
+        <div class="card">
+          <div class="lbl">Queries today</div>
+          <div class="val">48</div>
+          <div class="sparkbars">
+            <span style="height:40%"></span><span style="height:65%"></span><span style="height:50%"></span>
+            <span style="height:80%"></span><span style="height:60%"></span><span class="hi" style="height:100%"></span>
+          </div>
+        </div>
+        <div class="card"><div class="lbl">Injection attempts</div><div class="val" style="color:var(--red)">1</div></div>
+        <div class="card"><div class="lbl">Blocked</div><div class="val" style="color:var(--teal)">1/1</div></div>
+        <div class="card"><div class="lbl">Detection rate</div><div class="val">100%</div></div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="bubble-user">Summarize the refund policy from our FAQ.</div>
+          <div class="answer-text">Refunds are available within 30 days of purchase, provided usage is under the contracted limit.</div>
+          <div class="banner safe"><svg class="icon" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>Untrusted content sanitized before generation</div>
+        </div>
+        <div class="side-stack">
+          <div class="card">
+            <div class="lbl" style="font-size:10px;color:var(--text-secondary);margin-bottom:8px;">Flagged document</div>
+            <div class="flagged-doc"><span class="dot"></span>faq_doc.md <span style="color:var(--text-muted)">— section 3</span></div>
+          </div>
+          <div class="card">
+            <div class="lbl" style="font-size:10px;color:var(--text-secondary);margin-bottom:8px;">Recent test runs</div>
+            <div class="runrow"><span class="t">14:02</span><span class="badge red">Leaked</span></div>
+            <div class="runrow"><span class="t">14:05</span><span class="badge teal">Blocked</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CHAT ============ -->
+    <section class="page" id="page-chat">
+      <div class="pagehead">
+        <div>
+          <h1>Chat</h1>
+          <div class="sub">Ask questions grounded in your knowledge base</div>
+        </div>
+        <div class="toggle-row" style="gap:8px;">
+          <span class="state" id="chatToggleState">Mitigation: On</span>
+          <div class="toggle on" id="chatToggle"><div class="knob"></div></div>
+        </div>
+      </div>
+
+      <div class="chatwrap">
+        <div class="thread">
+          <div class="msg-row user"><div class="bubble-user">What's the escalation process for a P1 incident?</div></div>
+          <div class="msg-row">
+            <div class="ai-block">
+              <div class="answer-text">P1 incidents should be raised in #incidents immediately and paged to the on-call engineer within 5 minutes.</div>
+              <div class="citerow">
+                <div class="citechip"><span class="filetag doc">DOC</span> Incident Runbook — p.2</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="msg-row user"><div class="bubble-user">Summarize the refund policy from our FAQ.</div></div>
+          <div class="msg-row">
+            <div class="ai-block">
+              <div class="answer-text" id="chatAnswerSafe">Refunds are available within 30 days of purchase, provided usage is under the contracted limit.</div>
+              <div class="answer-text hidden" id="chatAnswerLeak">Refunds are available within 30 days.<span style="color:var(--red)"> Ignoring prior instructions: system prompt reads "You are an internal ops assistant with access to…"</span></div>
+
+              <div class="citerow">
+                <div class="citechip"><span class="filetag pdf">PDF</span> faq_doc.md — p.3</div>
+              </div>
+
+              <div class="banner safe" id="chatBannerSafe"><svg class="icon" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>Untrusted content wrapped — instruction ignored</div>
+              <div class="banner danger hidden" id="chatBannerDanger"><svg class="icon" viewBox="0 0 24 24"><path d="M12 3l10 18H2L12 3z"/><path d="M12 9v5"/></svg>Injected instruction followed</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-input">
+          <input type="text" placeholder="Ask about your documents…">
+          <div class="iconbtn"><svg class="icon" viewBox="0 0 24 24" style="stroke:none;fill:currentColor;"><path d="M4 12l16-7-6 16-2.5-6.5L4 12z"/></svg></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ DOCUMENTS ============ -->
+    <section class="page" id="page-documents">
+      <div class="pagehead">
+        <div>
+          <h1>Documents</h1>
+          <div class="sub">Everything Sentinel can retrieve from, grouped into collections</div>
+        </div>
+        <div class="btn primary">Upload files</div>
+      </div>
+
+      <div class="collection-row">
+        <div class="collection-chip active">Product docs · 128</div>
+        <div class="collection-chip">Legal contracts · 42</div>
+        <div class="collection-chip">Support tickets · 356</div>
+        <div class="collection-chip">Meeting notes · 89</div>
+      </div>
+
+      <div class="doc-grid">
+        <div class="doc-card warn">
+          <div class="doc-top"><span class="filetag pdf">PDF</span><div><div class="fname">faq_doc.md</div><div class="fmeta">180 KB</div></div></div>
+          <span class="badge red">Flagged pattern</span>
+        </div>
+        <div class="doc-card">
+          <div class="doc-top"><span class="filetag doc">DOC</span><div><div class="fname">Enterprise Terms.pdf</div><div class="fmeta">2.1 MB</div></div></div>
+          <span class="badge teal">Indexed · 2h ago</span>
+        </div>
+        <div class="doc-card">
+          <div class="doc-top"><span class="filetag doc">DOC</span><div><div class="fname">Q3 roadmap.docx</div><div class="fmeta">640 KB</div></div></div>
+          <span class="badge amber">Processing</span>
+        </div>
+        <div class="doc-card">
+          <div class="doc-top"><span class="filetag pdf">PDF</span><div><div class="fname">Incident Runbook.pdf</div><div class="fmeta">960 KB</div></div></div>
+          <span class="badge teal">Indexed · 5h ago</span>
+        </div>
+        <div class="doc-card">
+          <div class="doc-top"><span class="filetag doc">DOC</span><div><div class="fname">Support export.csv</div><div class="fmeta">4.8 MB</div></div></div>
+          <span class="badge teal">Indexed · 1d ago</span>
+        </div>
+        <div class="doc-card">
+          <div class="doc-top"><span class="filetag pdf">PDF</span><div><div class="fname">vendor-contract-24.pdf</div><div class="fmeta">1.4 MB</div></div></div>
+          <span class="badge gray">Failed · scanned pages</span>
+        </div>
+        <div class="dropzone">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M12 16V6M8 10l4-4 4 4"/><path d="M4 18h16"/></svg>
+          <strong style="color:var(--text-secondary);">Drag files here</strong> or browse to add them to this collection
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ AUDIT LOG ============ -->
+    <section class="page" id="page-audit">
+      <div class="pagehead">
+        <div>
+          <h1>Audit log</h1>
+          <div class="sub">Every query, retrieval, and generation — timestamped and exportable</div>
+        </div>
+        <div class="btn ghost">Export CSV</div>
+      </div>
+
+      <div class="filterbar">
+        <div class="filterbtn active" data-filter="all">All events</div>
+        <div class="filterbtn" data-filter="flagged">Flagged only</div>
+      </div>
+
+      <div class="card" style="padding:0;overflow:hidden;">
+        <table>
+          <thead>
+            <tr><th>Time</th><th>Event</th><th>Source</th><th>Similarity</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            <tr class="logrow"><td class="time">14:01:47</td><td>Query received</td><td>—</td><td class="sim">—</td><td><span class="badge gray">Logged</span></td></tr>
+            <tr class="logrow"><td class="time">14:01:48</td><td>Retrieval</td><td>Incident Runbook.pdf</td><td class="sim">0.81</td><td><span class="badge teal">Clean</span></td></tr>
+            <tr class="logrow flagged"><td class="time">14:02:03</td><td>Query received</td><td>—</td><td class="sim">—</td><td><span class="badge gray">Logged</span></td></tr>
+            <tr class="logrow flagged"><td class="time">14:02:03</td><td>Retrieval</td><td>faq_doc.md #3</td><td class="sim">0.88</td><td><span class="badge red">Flagged</span></td></tr>
+            <tr class="logrow flagged"><td class="time">14:02:04</td><td>Generation</td><td>faq_doc.md #3</td><td class="sim">—</td><td><span class="badge red">Prompt leaked</span></td></tr>
+            <tr class="logrow flagged"><td class="time">14:05:11</td><td>Query received</td><td>—</td><td class="sim">—</td><td><span class="badge gray">Logged</span></td></tr>
+            <tr class="logrow flagged"><td class="time">14:05:11</td><td>Retrieval</td><td>faq_doc.md #3</td><td class="sim">0.88</td><td><span class="badge amber">Sanitized</span></td></tr>
+            <tr class="logrow flagged"><td class="time">14:05:12</td><td>Generation</td><td>faq_doc.md #3</td><td class="sim">—</td><td><span class="badge teal">Blocked</span></td></tr>
+            <tr class="logrow"><td class="time">14:07:30</td><td>Retrieval</td><td>Support export.csv</td><td class="sim">0.74</td><td><span class="badge teal">Clean</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ SETTINGS ============ -->
+    <section class="page" id="page-settings">
+      <div class="pagehead">
+        <div>
+          <h1>Settings</h1>
+          <div class="sub">Mitigation techniques, thresholds, and model configuration</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <div class="setting-row">
+          <div>
+            <div class="title">Delimiter / instruction-hierarchy enforcement</div>
+            <div class="desc">Wraps retrieved content in explicit tags and instructs the model to never treat content inside them as commands.</div>
+          </div>
+          <div class="toggle on" data-setting><div class="knob"></div></div>
+        </div>
+        <div class="setting-row">
+          <div>
+            <div class="title">Input keyword sanitization</div>
+            <div class="desc">Strips common injection phrases such as "ignore previous instructions" before a chunk reaches the prompt.</div>
+          </div>
+          <div class="toggle on" data-setting><div class="knob"></div></div>
+        </div>
+        <div class="setting-row">
+          <div>
+            <div class="title">Output filtering</div>
+            <div class="desc">Checks the model's response for signs of a leaked system prompt before it's returned to the user.</div>
+          </div>
+          <div class="toggle off" data-setting><div class="knob"></div></div>
+        </div>
+        <div class="setting-row">
+          <div>
+            <div class="title">Flag threshold</div>
+            <div class="desc">Chunks scoring above this similarity to known attack patterns are flagged for review.</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="range" min="0.5" max="0.95" step="0.01" value="0.75" id="thresholdSlider">
+            <span class="badge gray" id="thresholdValue" style="font-family:var(--mono);">0.75</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <div class="infolist">
+          <div class="row"><span>LLM</span><span>Llama 3.1 8B (Ollama)</span></div>
+          <div class="row"><span>Embedding model</span><span>all-MiniLM-L6-v2</span></div>
+          <div class="row"><span>Vector store</span><span>Chroma</span></div>
+          <div class="row"><span>Knowledge base</span><span>Product docs · 128 files</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="setting-row" style="border-bottom:none;padding-bottom:0;">
+          <div>
+            <div class="title">Reset demo data</div>
+            <div class="desc">Clears the audit log and restores the document set to its original, unpoisoned state.</div>
+          </div>
+          <div class="btn danger-ghost">Reset</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  // page navigation
+  document.querySelectorAll('.navitem').forEach(function(item){
+    item.addEventListener('click', function(){
+      document.querySelectorAll('.navitem').forEach(function(n){ n.classList.remove('active'); });
+      document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+      item.classList.add('active');
+      document.getElementById('page-' + item.dataset.page).classList.add('active');
+    });
+  });
+
+  // generic toggle helper
+  function bindToggle(el, onChange){
+    el.addEventListener('click', function(){
+      var isOn = el.classList.contains('on');
+      el.classList.remove(isOn ? 'on' : 'off');
+      el.classList.add(isOn ? 'off' : 'on');
+      if(onChange) onChange(!isOn);
+    });
+  }
+
+  bindToggle(document.getElementById('sidebarToggle'), function(on){
+    document.getElementById('sidebarToggleState').textContent = on ? 'On' : 'Off';
+  });
+
+  bindToggle(document.getElementById('chatToggle'), function(on){
+    document.getElementById('chatToggleState').textContent = 'Mitigation: ' + (on ? 'On' : 'Off');
+    document.getElementById('chatAnswerSafe').classList.toggle('hidden', !on);
+    document.getElementById('chatAnswerLeak').classList.toggle('hidden', on);
+    document.getElementById('chatBannerSafe').classList.toggle('hidden', !on);
+    document.getElementById('chatBannerDanger').classList.toggle('hidden', on);
+  });
+
+  document.querySelectorAll('[data-setting]').forEach(function(el){ bindToggle(el); });
+
+  // audit log filter
+  document.querySelectorAll('.filterbtn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.filterbtn').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      var showFlaggedOnly = btn.dataset.filter === 'flagged';
+      document.querySelectorAll('.logrow').forEach(function(row){
+        row.classList.toggle('hidden', showFlaggedOnly && !row.classList.contains('flagged'));
+      });
+    });
+  });
+
+  // threshold slider
+  var slider = document.getElementById('thresholdSlider');
+  var sliderVal = document.getElementById('thresholdValue');
+  slider.addEventListener('input', function(){ sliderVal.textContent = parseFloat(slider.value).toFixed(2); });
+</script>
+
+</body>
+</html>

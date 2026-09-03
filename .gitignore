@@ -1,0 +1,33 @@
+# Environment and local configs
+.env
+.env.local
+.env.*.local
+*.env
+
+# Dependencies
+node_modules/
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Build artifacts
+dist/
+dist-ssr/
+.vite/
+.vercel/
+
+# Persistent data directory contents (Chroma vector store, SQLite files, logs)
+# Preserves data/documents/ directory structure
+data/*
+!data/documents/
+!data/documents/**
+!data/.gitkeep
+
+# Logs and databases
+*.log
+*.sqlite
+*.sqlite3
+*.db
