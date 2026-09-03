@@ -153,6 +153,9 @@
 - **D1 (Working App Foundation)**: Tag `D1` at commit `3098878` (Working RAG pipeline foundation, clean documents, SQLite audit logging infrastructure, configuration).
 - **D2 (Demonstrated Vulnerability)**: Tag `D2` at commit `6b272f3` (Poisoned `faq_doc.md`, chunk-boundary invariance test, unmitigated trigger execution, and SQLite exploit log evidence).
 
+## Git History Note
+P0-P4 were developed sequentially in the workspace before git was initialized. As a result, backend/pipeline.py and backend/audit_log.py already contained the full P4 mitigation implementation at the time of the D1 and D2 commits/tags — this code was present but not exercised or demonstrated until D3, since D1/D2's sample interactions did not pass mitigation flags. This is a byproduct of retrofitting version control onto already-completed sequential development, documented here for transparency and available to explain if asked during review.
+
 ## Current phase
 P5
 
