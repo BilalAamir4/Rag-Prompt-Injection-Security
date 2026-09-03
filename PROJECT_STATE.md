@@ -149,11 +149,13 @@
 | #15 | ON (True) | ON (True) | ON (True) | OFF | False | blocked | BLOCKED | NO (BLOCKED) | NO (BLOCKED) |
 | #16 | ON (True) | ON (True) | ON (True) | ON (True) | True | sanitized | DEFENDED | NO (BLOCKED) | NO (BLOCKED) |
 
+## Deliverables Tagged
+- **D1 (Working App Foundation)**: Tag `D1` at commit `3098878` (Working RAG pipeline foundation, clean documents, SQLite audit logging infrastructure, configuration).
+- **D2 (Demonstrated Vulnerability)**: Tag `D2` at commit `6b272f3` (Poisoned `faq_doc.md`, chunk-boundary invariance test, unmitigated trigger execution, and SQLite exploit log evidence).
+
 ## Current phase
 P5
 
 ## Next phase
 P6
-
-
 
