@@ -14,6 +14,7 @@ providers:
   - id: 'openai:chat:{{ env.LLM_MODEL }}'
     config:
       apiBaseUrl: '{{ env.LLM_BASE_URL }}'
+      apiKeyEnvar: 'LLM_API_KEY'
       temperature: 0
       seed: 42
 
