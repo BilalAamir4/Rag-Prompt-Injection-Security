@@ -27,6 +27,11 @@
   transitions (neutral, attack/danger, mitigated/safe) — never assert via static 
   text grep of the source file.
 
+## Deployment Status
+- **Deployment paused as of 2026-09-06** — active runtime reverted to local Ollama. Railway service deleted. Vercel not yet deployed. P15's Groq validation evidence remains on file and is still valid for reactivation when redeployment is decided.
+- **Active Runtime**: Local Ollama (`http://localhost:11434/v1`, model `llama3.1`) + local FastAPI backend (`http://localhost:8000`) + local Vite frontend (`http://localhost:5173`).
+- **Zero-Code Invariant**: Revert accomplished strictly via `backend/.env` with zero code modifications.
+
 ## Deliverables Tagged
 - **D1 (Working App Foundation)**: Tag `D1` at commit `3098878` (Working RAG pipeline foundation, clean documents, SQLite audit logging infrastructure, configuration).
 - **D2 (Demonstrated Vulnerability)**: Tag `D2` at commit `6b272f3` (Poisoned `faq_doc.md`, chunk-boundary invariance test, unmitigated trigger execution, and SQLite exploit log evidence).
@@ -700,14 +705,14 @@ P0-P4 were developed sequentially in the workspace before git was initialized. A
 
 
 ## Current phase
-P17 — Frontend deployment & final presentation polish
-
+Runtime Reverted to Local Ollama & Deployment Paused (Pre-P17 Hold)
 
 ## Next phase
-None — Final project delivery and live rehearsal
+P17 — Cloud Deployment (Railway + Vercel) when live demo date approaches
 
 ### Upcoming sequence:
 - P17 — Frontend deployment & final presentation polish
+- Final project delivery and live rehearsal
 
 
 
