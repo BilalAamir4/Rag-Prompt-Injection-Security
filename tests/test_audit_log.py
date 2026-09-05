@@ -85,8 +85,13 @@ def test_audit_logging_acceptance():
 
     for field in required_fields:
         assert field in row_dict, f"Missing required column: {field}"
-        assert row_dict[field] is not None, f"Field '{field}' is NULL"
-        print(f"  [PASS] Field '{field}' present and non-null (type: {type(row_dict[field]).__name__})")
+        if field == "flag_threshold":
+            # Confirmed contract: flag_threshold is NULL when threshold check is disabled
+            assert row_dict[field] is None, f"Expected flag_threshold to be NULL when disabled, got {row_dict[field]}"
+            print(f"  [PASS] Field 'flag_threshold' correctly NULL when threshold check disabled")
+        else:
+            assert row_dict[field] is not None, f"Field '{field}' is NULL"
+            print(f"  [PASS] Field '{field}' present and non-null (type: {type(row_dict[field]).__name__})")
 
     # Verify JSON structure of retrieved_chunks
     chunks = json.loads(row_dict["retrieved_chunks"])

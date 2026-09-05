@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     source_document TEXT,
     similarity_score REAL,
     is_flagged INTEGER NOT NULL DEFAULT 0,
-    flag_threshold REAL DEFAULT 0.75,
+    threshold_enabled INTEGER NOT NULL DEFAULT 0,
+    flag_threshold REAL,
     assembled_prompt TEXT NOT NULL,
     active_mitigations TEXT NOT NULL,
     llm_response TEXT,
@@ -60,10 +61,24 @@ def get_db_connection() -> sqlite3.Connection:
 
 
 def init_db() -> None:
-    """Initializes the database table and indexes if they do not already exist."""
+    """Initializes the database table, migrations, and indexes."""
     with get_db_connection() as conn:
         conn.executescript(TABLE_SCHEMA)
         conn.executescript(INDEX_SCHEMA)
+        # Migrate existing audit_logs table if threshold_enabled column is missing
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA table_info(audit_logs)")
+        cols = [row["name"] for row in cursor.fetchall()]
+        if "threshold_enabled" not in cols:
+            cursor.execute("ALTER TABLE audit_logs ADD COLUMN threshold_enabled INTEGER NOT NULL DEFAULT 0")
+            cursor.execute(
+                """
+                UPDATE audit_logs
+                SET threshold_enabled = 1
+                WHERE active_mitigations LIKE '%"retrieval_score_threshold": true%'
+                   OR active_mitigations LIKE '%"flag_threshold": true%'
+                """
+            )
         conn.commit()
 
 
@@ -136,13 +151,46 @@ def serialize_chunks(retrieved_chunks: List[Any]) -> tuple[str, Optional[str], O
     return json.dumps(serialized), primary_doc, primary_score
 
 
+CSV_COLUMNS = [
+    "id",
+    "timestamp",
+    "raw_query",
+    "retrieved_chunks",
+    "source_document",
+    "similarity_score",
+    "is_flagged",
+    "threshold_enabled",
+    "flag_threshold",
+    "assembled_prompt",
+    "active_mitigations",
+    "llm_response",
+    "final_status",
+]
+
+
+def _format_row_dict(row: Optional[sqlite3.Row]) -> Optional[Dict[str, Any]]:
+    if not row:
+        return None
+    d = dict(row)
+    if "threshold_enabled" in d:
+        d["threshold_enabled"] = bool(d["threshold_enabled"])
+    else:
+        try:
+            mits = json.loads(d.get("active_mitigations", "{}"))
+            d["threshold_enabled"] = bool(mits.get("retrieval_score_threshold", mits.get("flag_threshold", False)))
+        except Exception:
+            d["threshold_enabled"] = False
+    return d
+
+
 def log_pipeline_run(
     raw_query: str,
     retrieved_chunks: List[Any],
     assembled_prompt: str,
     llm_response: str,
     active_mitigations: Optional[Dict[str, Any]] = None,
-    is_flagged: bool = False,
+    is_flagged: Optional[bool] = None,
+    threshold_enabled: Optional[bool] = None,
     retrieval_score_threshold: Optional[float] = None,
     flag_threshold: Optional[float] = None,
     final_status: str = "clean",
@@ -151,27 +199,52 @@ def log_pipeline_run(
     """
     Logs an end-to-end pipeline run into the SQLite audit_logs table.
     Supports retrieval_score_threshold (P4 rename) while maintaining flag_threshold compatibility.
+    Persists flag_threshold = NULL when the retrieval score threshold check is disabled.
+    Persists explicit threshold_enabled boolean on/off state as a dedicated column.
     """
     init_db()
 
     if timestamp is None:
         timestamp = datetime.now(timezone.utc).isoformat()
 
-    # Determine threshold float value
-    if retrieval_score_threshold is not None:
-        threshold_val = float(retrieval_score_threshold)
-    elif flag_threshold is not None:
-        threshold_val = float(flag_threshold)
-    else:
-        threshold_val = 0.30
-
     chunks_json, top_doc, top_score = serialize_chunks(retrieved_chunks)
+
+    # Determine is_flagged: if not explicitly supplied, check if any chunk was flagged
+    if is_flagged is None:
+        try:
+            parsed_chunks = json.loads(chunks_json)
+            is_flagged = any(bool(c.get("flagged", False)) for c in parsed_chunks)
+        except Exception:
+            is_flagged = False
 
     mitigations_dict = dict(active_mitigations) if active_mitigations is not None else {}
     # Ensure retrieval_score_threshold is populated in active_mitigations
     if "retrieval_score_threshold" not in mitigations_dict and "flag_threshold" in mitigations_dict:
         mitigations_dict["retrieval_score_threshold"] = mitigations_dict["flag_threshold"]
     mitigations_json = json.dumps(mitigations_dict)
+
+    # Determine threshold on/off state (boolean)
+    thresh_active = mitigations_dict.get("retrieval_score_threshold", mitigations_dict.get("flag_threshold"))
+    if threshold_enabled is not None:
+        is_thresh_enabled = bool(threshold_enabled)
+    elif thresh_active is not None:
+        is_thresh_enabled = bool(thresh_active)
+    elif retrieval_score_threshold is not None or flag_threshold is not None:
+        is_thresh_enabled = True
+    else:
+        is_thresh_enabled = False
+
+    # Determine threshold float value: None (NULL in DB) if threshold check was disabled
+    if not is_thresh_enabled:
+        threshold_val = None
+    elif retrieval_score_threshold is not None:
+        threshold_val = float(retrieval_score_threshold)
+    elif flag_threshold is not None:
+        threshold_val = float(flag_threshold)
+    elif isinstance(thresh_active, (int, float)):
+        threshold_val = float(thresh_active)
+    else:
+        threshold_val = 0.30
 
     with get_db_connection() as conn:
         cursor = conn.cursor()
@@ -184,12 +257,13 @@ def log_pipeline_run(
                 source_document,
                 similarity_score,
                 is_flagged,
+                threshold_enabled,
                 flag_threshold,
                 assembled_prompt,
                 active_mitigations,
                 llm_response,
                 final_status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 timestamp,
@@ -198,6 +272,7 @@ def log_pipeline_run(
                 top_doc,
                 top_score,
                 1 if is_flagged else 0,
+                1 if is_thresh_enabled else 0,
                 threshold_val,
                 assembled_prompt,
                 mitigations_json,
@@ -216,6 +291,7 @@ def log_pipeline_run(
         "source_document": top_doc,
         "similarity_score": top_score,
         "is_flagged": is_flagged,
+        "threshold_enabled": is_thresh_enabled,
         "flag_threshold": threshold_val,
         "retrieval_score_threshold": threshold_val,
         "assembled_prompt": assembled_prompt,
@@ -242,7 +318,7 @@ def get_recent_logs(limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
             (limit, offset),
         )
         rows = cursor.fetchall()
-        return [dict(row) for row in rows]
+        return [_format_row_dict(row) for row in rows]
 
 
 def get_flagged_logs(limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
@@ -263,7 +339,7 @@ def get_flagged_logs(limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
             (limit, offset),
         )
         rows = cursor.fetchall()
-        return [dict(row) for row in rows]
+        return [_format_row_dict(row) for row in rows]
 
 
 def get_log_by_id(log_id: int) -> Optional[Dict[str, Any]]:
@@ -276,12 +352,13 @@ def get_log_by_id(log_id: int) -> Optional[Dict[str, Any]]:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM audit_logs WHERE id = ?", (log_id,))
         row = cursor.fetchone()
-        return dict(row) if row else None
+        return _format_row_dict(row)
 
 
-def export_csv() -> str:
+def export_csv(flagged_only: bool = False) -> str:
     """
-    Exports the entire audit log table as an RFC 4180 compliant CSV string.
+    Exports audit log records as an RFC 4180 compliant CSV string.
+    Supports optional flagged_only filtering to match the UI filter.
     Called by the FastAPI layer for the 'Export CSV' button (Spec Screen 4).
     """
     init_db()
@@ -290,22 +367,33 @@ def export_csv() -> str:
 
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM audit_logs ORDER BY id ASC")
+        select_cols = ", ".join(CSV_COLUMNS)
+        if flagged_only:
+            cursor.execute(
+                f"""
+                SELECT {select_cols} FROM audit_logs
+                WHERE is_flagged = 1 OR final_status != 'clean'
+                ORDER BY id ASC
+                """
+            )
+        else:
+            cursor.execute(f"SELECT {select_cols} FROM audit_logs ORDER BY id ASC")
         rows = cursor.fetchall()
 
-        if rows:
-            headers = [desc[0] for desc in cursor.description]
-            writer.writerow(headers)
-            for row in rows:
-                writer.writerow(list(row))
-        else:
-            headers = [
-                "id", "timestamp", "raw_query", "retrieved_chunks",
-                "source_document", "similarity_score", "is_flagged",
-                "flag_threshold", "assembled_prompt", "active_mitigations",
-                "llm_response", "final_status"
-            ]
-            writer.writerow(headers)
+        writer.writerow(CSV_COLUMNS)
+        for row in rows:
+            formatted_row = []
+            for col in CSV_COLUMNS:
+                val = row[col]
+                if col == "threshold_enabled":
+                    formatted_row.append("true" if bool(val) else "false")
+                elif col == "flag_threshold":
+                    formatted_row.append("" if val is None else val)
+                elif val is None:
+                    formatted_row.append("")
+                else:
+                    formatted_row.append(val)
+            writer.writerow(formatted_row)
 
     return output.getvalue()
 

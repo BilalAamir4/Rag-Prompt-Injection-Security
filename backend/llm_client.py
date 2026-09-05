@@ -10,7 +10,23 @@ import config
 
 from typing import Optional
 
-__all__ = ["generate"]
+__all__ = ["generate", "check_health"]
+
+
+def check_health(timeout: float = 2.0) -> bool:
+    """
+    Checks reachability of the OpenAI-compatible endpoint via GET /models.
+    Returns True if endpoint responds with 200 OK, False otherwise.
+    """
+    try:
+        endpoint = f"{config.LLM_BASE_URL.rstrip('/')}/models"
+        headers = {}
+        if config.LLM_API_KEY and config.LLM_API_KEY != "unused-for-local-ollama":
+            headers["Authorization"] = f"Bearer {config.LLM_API_KEY}"
+        resp = requests.get(endpoint, headers=headers, timeout=timeout)
+        return resp.status_code == 200
+    except Exception:
+        return False
 
 
 def generate(

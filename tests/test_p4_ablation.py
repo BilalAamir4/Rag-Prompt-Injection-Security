@@ -209,30 +209,21 @@ def verify_assertions(rows: List[Dict[str, Any]]) -> None:
     print("VERIFYING ABLATION ASSERTIONS UNDER DETERMINISTIC CONFIGURATION")
     print("=" * 80)
 
-    # 1. Isolated threshold ablation proof
-    target_pair = None
-    for i in range(len(rows)):
-        for j in range(i + 1, len(rows)):
-            r1, r2 = rows[i], rows[j]
-            if (
-                r1["delimiter"] == r2["delimiter"]
-                and r1["sanitization"] == r2["sanitization"]
-                and r1["output_filter"] == r2["output_filter"]
-                and r1["retrieval_score_threshold"] != r2["retrieval_score_threshold"]
-            ):
-                if r1["is_flagged"] != r2["is_flagged"]:
-                    target_pair = (r1, r2)
-                    break
-        if target_pair:
-            break
+    # 1. Isolated threshold ablation proof across all 8 pairs
+    print("[PASS] Isolated Threshold Ablation Proof (Verifying threshold is log-only across all 8 pairs):")
+    for i in range(0, len(rows), 2):
+        r_off, r_on = rows[i], rows[i+1]
+        assert r_off["retrieval_score_threshold"] is False and r_on["retrieval_score_threshold"] is True
+        assert r_off["is_flagged"] is False and r_on["is_flagged"] is True, f"Row #{r_off['run_num']} vs #{r_on['run_num']} is_flagged mismatch"
+        assert r_off["outcome"] == r_on["outcome"], (
+            f"Outcome disparity between Row #{r_off['run_num']} ({r_off['outcome']}) and "
+            f"Row #{r_on['run_num']} ({r_on['outcome']}) differing only in threshold!"
+        )
+        assert r_off["url_detected"] == r_on["url_detected"]
+        assert r_off["claim_detected"] == r_on["claim_detected"]
+        print(f"  Pair #{r_off['run_num']:02d} (OFF) vs #{r_on['run_num']:02d} (ON): Outcome={r_off['outcome']} (Match: True) | is_flagged: {r_off['is_flagged']} -> {r_on['is_flagged']}")
+    print("  ==> Verified: retrieval_score_threshold is strictly log-only across all pairs.")
 
-    assert target_pair is not None, "No pair differing ONLY in threshold produced different is_flagged"
-    r_off, r_on = (target_pair[0], target_pair[1]) if not target_pair[0]["retrieval_score_threshold"] else (target_pair[1], target_pair[0])
-
-    print("[PASS] Isolated Threshold Ablation Proof:")
-    print(f"  Row #{r_off['run_num']:02d}: Threshold=OFF -> is_flagged={r_off['is_flagged']}")
-    print(f"  Row #{r_on['run_num']:02d}: Threshold=ON  -> is_flagged={r_on['is_flagged']}")
-    print(f"  ==> Verified: retrieval_score_threshold cleanly toggles detection without changing prompt/text.")
 
     # 2. All-off reproduces injection leak
     all_off = rows[0]

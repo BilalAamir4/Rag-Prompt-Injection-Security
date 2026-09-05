@@ -50,9 +50,10 @@ ATTACK_URL_PATTERN = re.compile(
 )
 
 ATTACK_CLAIM_PATTERN = re.compile(
-    r"full\s+refund\s+regardless\s+of\s+(?:\w+\s+)?usage",
+    r"full\s+refund[,\s]+regardless\s+of\s+(?:\w+\s+)?usage",
     re.IGNORECASE,
 )
+
 
 SAFE_BLOCKED_MESSAGE = (
     "Response blocked: Potential prompt injection or policy violation detected by output filter."
@@ -299,7 +300,8 @@ def query_pipeline(
         llm_response=final_response,
         active_mitigations=log_mitigations,
         is_flagged=is_flagged,
-        retrieval_score_threshold=threshold_val,
+        threshold_enabled=threshold_enabled,
+        retrieval_score_threshold=threshold_val if threshold_enabled else None,
         final_status=final_status,
     )
 
