@@ -55,14 +55,15 @@ def test_audit_logging_acceptance():
     print("RETRIEVED AUDIT ROW FROM SQLITE:")
     print("=" * 80)
     for col, val in row_dict.items():
-        if col in ("retrieved_chunks", "assembled_prompt", "llm_response"):
-            val_str = str(val)
+        if col in ("retrieved_chunks", "assembled_prompt", "llm_response", "reasoning_content"):
+            val_str = str(val).encode("ascii", errors="replace").decode("ascii")
             if len(val_str) > 200:
                 print(f"  {col}: {val_str[:150]} ... [truncated, total length: {len(val_str)}]")
             else:
                 print(f"  {col}: {val_str}")
         else:
             print(f"  {col}: {val}")
+
 
     # Step 3: Assertions on all required fields
     print("\n" + "=" * 80)

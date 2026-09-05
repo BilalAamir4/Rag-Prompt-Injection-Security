@@ -151,7 +151,9 @@ def run_query(request: QueryRequest):
         "final_status": result["final_status"],
         "audit_id": result["audit_id"],
         "active_mitigations": result["audit_entry"]["active_mitigations"],
+        "reasoning_content": result.get("reasoning_content"),
     }
+
 
 
 # --- Documents Endpoints ---

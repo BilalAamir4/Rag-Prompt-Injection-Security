@@ -268,7 +268,7 @@ def query_pipeline(
     prompt = build_prompt(query, annotated_chunks, mitigation_flags=pipeline_flags)
 
     # Stage 5: LLM Generation
-    raw_response = llm_client.generate(prompt)
+    raw_response, reasoning_content = llm_client.generate(prompt, return_reasoning=True)
 
     # Stage 6: Output filtering (Partial / Exploratory)
     if output_filter:
@@ -302,6 +302,7 @@ def query_pipeline(
         is_flagged=is_flagged,
         threshold_enabled=threshold_enabled,
         retrieval_score_threshold=threshold_val if threshold_enabled else None,
+        reasoning_content=reasoning_content,
         final_status=final_status,
     )
 
@@ -311,9 +312,11 @@ def query_pipeline(
         "prompt": prompt,
         "response": final_response,
         "raw_response": raw_response,
+        "reasoning_content": reasoning_content,
         "audit_entry": audit_entry,
         "audit_id": audit_entry["id"],
         "is_flagged": is_flagged,
         "final_status": final_status,
     }
+
 

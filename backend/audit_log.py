@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     assembled_prompt TEXT NOT NULL,
     active_mitigations TEXT NOT NULL,
     llm_response TEXT,
+    reasoning_content TEXT,
     final_status TEXT NOT NULL
 );
 """
@@ -65,7 +66,7 @@ def init_db() -> None:
     with get_db_connection() as conn:
         conn.executescript(TABLE_SCHEMA)
         conn.executescript(INDEX_SCHEMA)
-        # Migrate existing audit_logs table if threshold_enabled column is missing
+        # Migrate existing audit_logs table if columns are missing
         cursor = conn.cursor()
         cursor.execute("PRAGMA table_info(audit_logs)")
         cols = [row["name"] for row in cursor.fetchall()]
@@ -79,6 +80,8 @@ def init_db() -> None:
                    OR active_mitigations LIKE '%"flag_threshold": true%'
                 """
             )
+        if "reasoning_content" not in cols:
+            cursor.execute("ALTER TABLE audit_logs ADD COLUMN reasoning_content TEXT")
         conn.commit()
 
 
@@ -164,6 +167,7 @@ CSV_COLUMNS = [
     "assembled_prompt",
     "active_mitigations",
     "llm_response",
+    "reasoning_content",
     "final_status",
 ]
 
@@ -195,12 +199,14 @@ def log_pipeline_run(
     flag_threshold: Optional[float] = None,
     final_status: str = "clean",
     timestamp: Optional[str] = None,
+    reasoning_content: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Logs an end-to-end pipeline run into the SQLite audit_logs table.
     Supports retrieval_score_threshold (P4 rename) while maintaining flag_threshold compatibility.
     Persists flag_threshold = NULL when the retrieval score threshold check is disabled.
     Persists explicit threshold_enabled boolean on/off state as a dedicated column.
+    Persists reasoning_content in dedicated audit column (Spec 1.9 / P15).
     """
     init_db()
 
@@ -262,8 +268,9 @@ def log_pipeline_run(
                 assembled_prompt,
                 active_mitigations,
                 llm_response,
+                reasoning_content,
                 final_status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 timestamp,
@@ -277,6 +284,7 @@ def log_pipeline_run(
                 assembled_prompt,
                 mitigations_json,
                 llm_response,
+                reasoning_content,
                 final_status,
             ),
         )
@@ -297,8 +305,10 @@ def log_pipeline_run(
         "assembled_prompt": assembled_prompt,
         "active_mitigations": json.loads(mitigations_json),
         "llm_response": llm_response,
+        "reasoning_content": reasoning_content,
         "final_status": final_status,
     }
+
 
 
 def get_recent_logs(limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
