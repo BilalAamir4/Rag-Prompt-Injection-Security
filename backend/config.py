@@ -19,10 +19,10 @@ _possible_env_paths = [
 
 for _path in _possible_env_paths:
     if _path.is_file():
-        load_dotenv(dotenv_path=_path, override=False)
+        load_dotenv(dotenv_path=_path, override=True)
         break
 else:
-    load_dotenv()
+    load_dotenv(override=True)
 
 # Read environment variables with defaults matching .env.example
 LLM_BASE_URL: str = os.getenv("LLM_BASE_URL", "http://localhost:11434/v1")
@@ -60,6 +60,7 @@ class Settings:
         env = dict(os.environ)
         env["LLM_BASE_URL"] = self.LLM_BASE_URL
         env["LLM_API_KEY"] = self.LLM_API_KEY
+        env["OPENAI_API_KEY"] = self.LLM_API_KEY
         env["LLM_MODEL"] = self.LLM_MODEL
         env["DATA_DIR"] = self.DATA_DIR
         return env

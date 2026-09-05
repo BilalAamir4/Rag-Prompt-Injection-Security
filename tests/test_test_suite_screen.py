@@ -44,8 +44,10 @@ def test_01_promptfoo_config_references_shared_env_vars():
 
     # Verify provider references shared environment variables
     assert "{{ env.LLM_BASE_URL }}" in content, "apiBaseUrl must reference {{ env.LLM_BASE_URL }}"
-    assert "{{ env.LLM_API_KEY }}" in content, "apiKey must reference {{ env.LLM_API_KEY }}"
     assert "{{ env.LLM_MODEL }}" in content, "model ID must reference {{ env.LLM_MODEL }}"
+
+    # Verify apiKey is not stored in provider config to prevent plaintext secret leakage into results JSON
+    assert "apiKey:" not in content, "apiKey must not be in promptfooconfig.yaml (Promptfoo reads from OPENAI_API_KEY env)"
 
     # Verify zero hardcoded Ollama URLs or native endpoints
     assert "localhost:11434" not in content, "Hardcoded Ollama URL must not appear in promptfooconfig.yaml"
