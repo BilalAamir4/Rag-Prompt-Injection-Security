@@ -33,6 +33,9 @@ ALLOWED_ORIGINS_RAW: str = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173")
 ALLOWED_ORIGINS: List[str] = [
     origin.strip() for origin in ALLOWED_ORIGINS_RAW.split(",") if origin.strip()
 ]
+EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
+VECTOR_STORE: str = "Chroma"
+KNOWLEDGE_BASE: str = "sentinel_docs"
 
 
 @dataclass(frozen=True)
@@ -43,6 +46,9 @@ class Settings:
     DATA_DIR: str = DATA_DIR
     ALLOWED_ORIGINS: List[str] = field(default_factory=lambda: list(ALLOWED_ORIGINS))
     ALLOWED_ORIGINS_RAW: str = ALLOWED_ORIGINS_RAW
+    EMBEDDING_MODEL: str = EMBEDDING_MODEL
+    VECTOR_STORE: str = VECTOR_STORE
+    KNOWLEDGE_BASE: str = KNOWLEDGE_BASE
 
     @property
     def data_path(self) -> Path:

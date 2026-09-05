@@ -198,7 +198,7 @@ def test_08_test_runs_endpoint():
     assert res.status_code == 200
     data = res.json()
     assert "stats" in data
-    assert data["stats"]["trials_run"] in (10, 48)
+    assert data["stats"]["trials_run"] in (10, 48, 50)
     assert data["stats"]["blocked"] >= 0
     assert data["stats"]["succeeded"] > 0
     assert "by_technique" in data

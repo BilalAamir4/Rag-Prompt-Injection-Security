@@ -189,3 +189,24 @@ export async function runTestSuite() {
   return response.json();
 }
 
+/**
+ * Reset demo data: synchronous wipe & rebuild of Chroma collection,
+ * clear SQLite audit log, and restore default mitigation settings.
+ * Calls POST /settings/reset
+ */
+export async function resetDemoData() {
+  const response = await fetch(`${API_BASE_URL}/settings/reset`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) {
+    let errorDetail = `${response.status} ${response.statusText}`;
+    try {
+      const errJson = await response.json();
+      if (errJson.detail) errorDetail = errJson.detail;
+    } catch (_) {}
+    throw new Error(`Reset demo data failed: ${errorDetail}`);
+  }
+  return response.json();
+}
+

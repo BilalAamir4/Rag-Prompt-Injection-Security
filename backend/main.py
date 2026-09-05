@@ -325,9 +325,9 @@ def get_settings():
         "system_info": {
             "llm_model": settings.LLM_MODEL,
             "llm_base_url": settings.LLM_BASE_URL,
-            "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
-            "vector_store": "Chroma",
-            "active_knowledge_base": ingestion.COLLECTION_NAME,
+            "embedding_model": settings.EMBEDDING_MODEL,
+            "vector_store": settings.VECTOR_STORE,
+            "active_knowledge_base": settings.KNOWLEDGE_BASE,
             "data_dir": settings.DATA_DIR,
         },
     }
@@ -350,9 +350,9 @@ def update_settings(update_data: SettingsUpdateRequest):
         "system_info": {
             "llm_model": settings.LLM_MODEL,
             "llm_base_url": settings.LLM_BASE_URL,
-            "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
-            "vector_store": "Chroma",
-            "active_knowledge_base": ingestion.COLLECTION_NAME,
+            "embedding_model": settings.EMBEDDING_MODEL,
+            "vector_store": settings.VECTOR_STORE,
+            "active_knowledge_base": settings.KNOWLEDGE_BASE,
             "data_dir": settings.DATA_DIR,
         },
     }

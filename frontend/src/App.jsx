@@ -6,6 +6,7 @@ import Documents from './components/Documents.jsx'
 import AuditLog from './components/AuditLog.jsx'
 import TraceDetail from './components/TraceDetail.jsx'
 import TestSuiteResults from './components/TestSuiteResults.jsx'
+import Settings from './components/Settings.jsx'
 
 const SCREENS = {
   trace: {
@@ -96,6 +97,8 @@ export default function App() {
           />
         ) : activeRoute === 'test-runs' ? (
           <TestSuiteResults onSelectLog={handleSelectLog} />
+        ) : activeRoute === 'settings' ? (
+          <Settings />
         ) : (
           <section className="page active" id={`page-${currentScreen.id}`}>
             <div className="pagehead">
