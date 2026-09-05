@@ -581,6 +581,7 @@ P0-P4 were developed sequentially in the workspace before git was initialized. A
     Results: 5 passed (100%), 0 failed (0%), 0 errors (Duration: 1m 12s)
     ```
   - Promptfoo Outcome: 100% block/defense rate achieved on the mitigated pipeline, proving that the Promptfoo evaluation harness independently confirms full defense.
+  - Shared Pipeline Architecture: `tests/promptfoo_provider.py` does **not** reimplement any pipeline logic. It directly imports and executes the exact same shared `query_pipeline()` function from `backend/pipeline.py` that powers the FastAPI `POST /query` endpoint (`backend/main.py`) and the ablation runner scripts. It passes user queries and the requested mitigation configuration directly to `query_pipeline(query, mitigation_flags=...)` and extracts `res["response"]`, guaranteeing zero drift or divergence between Promptfoo evaluations, production API endpoints, and test suites.
 - 6-Step Demo Sequence End-to-End Validation against Groq (`tests/test_p14_validation.py`):
   - **Step 1 (Start clean)**: `POST /settings/reset` cleanly restored baseline documents (7 indexed), wiped SQLite audit log (0 records), and reset mitigations to default (OFF) — **PASS**.
   - **Step 2 (Normal question with correct logged retrieval)**: Query on remote work and home office stipend standards retrieved `employee_handbook.md`, generated grounded answer ($1,500 stipend), logged as `clean`, `is_flagged=False` — **PASS**.
