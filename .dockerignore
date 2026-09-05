@@ -1,0 +1,11 @@
+.git
+.pytest_cache
+node_modules
+frontend
+data/chroma
+data/audit.db
+*.pyc
+__pycache__
+backend/.env
+backend/__pycache__
+tests
