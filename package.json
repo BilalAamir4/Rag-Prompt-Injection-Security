@@ -1,0 +1,23 @@
+{
+  "name": "cyber-security",
+  "version": "1.0.0",
+  "description": "Sentinel RAG is a security research and evaluation harness designed to test, demonstrate, and mitigate indirect prompt injection attacks against Retrieval-Augmented Generation (RAG) pipelines.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "promptfoo": "promptfoo"
+  },
+  "devDependencies": {
+    "promptfoo": "^0.122.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BilalAamir4/Rag-Prompt-Injection-Security.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}

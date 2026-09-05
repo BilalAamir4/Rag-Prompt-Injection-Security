@@ -403,18 +403,41 @@ P0-P4 were developed sequentially in the workspace before git was initialized. A
   - Vitest suite: 24/24 tests passed across all 5 frontend test files (`TraceDetail`: 5/5, `LiveTrace`: 4/4, `AuditLog`: 5/5, `Chat`: 5/5, `Documents`: 5/5).
   - Browser subagent verification: Navigated from Audit log row 692 to `#/replay`, verified side-by-side unmitigated (red banner) vs mitigated (teal banner), verified red payload highlight and teal delimiter highlight, captured screenshot `trace_detail_view_1788570374297.png`.
 
+### P12 — Test Suite Results Screen & Promptfoo Integration — DONE 2026-09-05
+- Files created/modified:
+  - `promptfooconfig.yaml` (Root-level Promptfoo configuration referencing shared env vars `{{ env.LLM_MODEL }}`, `{{ env.LLM_BASE_URL }}`, `{{ env.LLM_API_KEY }}` with `envFile: 'backend/.env'`; zero hardcoded Ollama URLs)
+  - `package.json` (Root-level dev dependency for `promptfoo`; confirmed completely absent from `frontend/package.json` and `frontend/node_modules`)
+  - `backend/promptfoo_runner.py` (Orchestrates Promptfoo evaluation suite across P1 trigger query and wording variants against 5 representative mitigation techniques, parses JSON results, logs every trial to SQLite audit log with traceable `audit_id`, and calculates aggregate metrics)
+  - `backend/main.py` (Exposed `POST /test-runs/run` and `POST /test-runs/promptfoo`, updated `GET /test-runs` to serve Promptfoo evaluation data)
+  - `backend/config.py` (Added `get_subprocess_env()` on `Settings` dataclass, preserving strict zero `os.environ` outside `config.py` rule)
+  - `frontend/src/api.js` (Added `fetchTestRuns` and `runTestSuite` helpers routing through `VITE_API_BASE_URL`)
+  - `frontend/src/components/TestSuiteResults.jsx` (4-card metric grid, Promptfoo info banner, mitigation ablation bar chart, trial-by-trial table with `LEAKED`/`BLOCKED` badges, live execution button, and "View trace →" links to Trace Detail)
+  - `frontend/src/App.jsx` (Mounted `TestSuiteResults` component on `test-runs` route)
+  - `frontend/src/index.css` (Added styles for `.promptfoo-info-card`, `.ablation-chart`, `.chart-bar-bg`, `.chart-bar-fill`, `.dense-table`)
+  - `frontend/src/__tests__/TestSuiteResults.test.jsx` (5 RTL + jsdom unit tests verifying DOM rendering, metric cards, ablation bar fills, and live re-runs)
+  - `tests/test_test_suite_screen.py` (6 acceptance tests verifying config env var references, dependency scoping, Vitest execution, API contract, Promptfoo output file, and zero URL leaks)
+- Conformance to Specifications:
+  - Spec 1.11 & 2.4 #6: Multi-trial evaluation via Promptfoo, header stat row (trials run, succeeded, blocked, block rate %), ablation comparison bar chart per mitigation technique, trial-by-trial table linking into P11's Trace Detail for each row, and "Run Promptfoo suite" button.
+  - Promptfoo Shared Config: `promptfooconfig.yaml` loads `backend/.env` and passes `${LLM_MODEL}`, `${LLM_BASE_URL}`, and `${LLM_API_KEY}`. Zero hardcoded Ollama URLs. Swapping providers in P15 will require zero YAML edits.
+  - Dependency Scoping: `promptfoo` installed strictly as root devDependency; verified 100% absent from `frontend/package.json` and `frontend/node_modules/`.
+- Acceptance Verification Results:
+  - Live Promptfoo Output: Evaluated 10 trials against OpenAI-compatible endpoint (Trials run: 10, Succeeded/Leaked: 8, Blocked: 2, Block rate: 20.0%). Verified real structured output in `data/promptfoo_results.json`.
+  - Vitest Test Suite: 29/29 tests passed across all 6 test files (`TestSuiteResults`: 5/5, `TraceDetail`: 5/5, `LiveTrace`: 4/4, `Chat`: 5/5, `Documents`: 5/5, `AuditLog`: 5/5).
+  - Pytest Test Suite: 34/34 tests passed across all test suites (`test_test_suite_screen.py`: 6/6, `test_frontend_shell.py`: 5/5, `test_api_endpoints.py`: 8/8, `test_live_trace.py`: 3/3, `test_chat.py`: 3/3, `test_documents.py`: 3/3, `test_audit_log_screen.py`: 4/4, `test_trace_detail_screen.py`: 4/4, `test_config.py`: 3/3, `test_chunk_boundary.py`: 1/1).
+  - Browser Subagent Verification: Inspected `http://localhost:5173/#/test-runs`, verified metric grid, Promptfoo info banner, ablation chart, and trial table with `LEAKED`/`BLOCKED` badges. Clicked "View trace →" on Trial #1 and verified smooth transition to `/#/replay` with side-by-side unmitigated vs. mitigated trace detail. Screenshots captured: `test_suite_results_1788574118290.png` and `trace_detail_trial_1788574162673.png`.
+
 ## Current phase
-P11 — Attack replay / Trace detail screen (DONE)
+P12 — Test suite results screen + Promptfoo integration (DONE)
 
 ## Next phase
-P12 — Test suite results screen + Promptfoo integration
+P13 — Settings screen & demo data reset
 
 ### Upcoming sequence:
-- P13 — Settings screen & demo data reset
 - P14 — End-to-end regression & ablation verification
 - P15 — Provider swap (OpenAI-compatible client abstraction)
 - P16 — Backend deployment & containerization
 - P17 — Frontend deployment & final presentation polish
+
 
 
 

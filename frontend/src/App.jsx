@@ -5,6 +5,7 @@ import Chat from './components/Chat.jsx'
 import Documents from './components/Documents.jsx'
 import AuditLog from './components/AuditLog.jsx'
 import TraceDetail from './components/TraceDetail.jsx'
+import TestSuiteResults from './components/TestSuiteResults.jsx'
 
 const SCREENS = {
   trace: {
@@ -93,6 +94,8 @@ export default function App() {
             initialLog={selectedLog}
             onBack={() => navigateTo('audit')}
           />
+        ) : activeRoute === 'test-runs' ? (
+          <TestSuiteResults onSelectLog={handleSelectLog} />
         ) : (
           <section className="page active" id={`page-${currentScreen.id}`}>
             <div className="pagehead">

@@ -8,7 +8,7 @@ import * as api from '../api.js';
 vi.mock('../api.js', () => ({
   fetchAuditLogs: vi.fn(),
   exportAuditLogCsv: vi.fn(),
-  getExportAuditLogsCsvUrl: vi.fn((flaggedOnly) => `http://localhost:8000/audit-log/export${flaggedOnly ? '?flagged_only=true' : ''}`),
+  getExportAuditLogsCsvUrl: vi.fn((flaggedOnly) => `http://test-backend-api/audit-log/export${flaggedOnly ? '?flagged_only=true' : ''}`),
 }));
 
 describe('AuditLog Component - RTL + jsdom DOM and State Transition Suite', () => {

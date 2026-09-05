@@ -56,5 +56,13 @@ class Settings:
             return p.resolve()
         return (repo_root / p).resolve()
 
+    def get_subprocess_env(self) -> dict:
+        env = dict(os.environ)
+        env["LLM_BASE_URL"] = self.LLM_BASE_URL
+        env["LLM_API_KEY"] = self.LLM_API_KEY
+        env["LLM_MODEL"] = self.LLM_MODEL
+        env["DATA_DIR"] = self.DATA_DIR
+        return env
+
 
 settings = Settings()

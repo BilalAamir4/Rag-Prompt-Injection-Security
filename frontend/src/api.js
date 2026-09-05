@@ -156,3 +156,36 @@ export async function exportAuditLogCsv(flagged_only = false) {
   }
   return response.text();
 }
+
+/**
+ * Fetch test suite benchmark results, statistics, and ablation matrix.
+ * Calls GET /test-runs
+ */
+export async function fetchTestRuns() {
+  const response = await fetch(`${API_BASE_URL}/test-runs`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch test runs: ${response.status} ${response.statusText}`);
+  }
+  return response.json();
+}
+
+/**
+ * Trigger a fresh live Promptfoo test suite evaluation.
+ * Calls POST /test-runs/run
+ */
+export async function runTestSuite() {
+  const response = await fetch(`${API_BASE_URL}/test-runs/run`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) {
+    let errorDetail = `${response.status} ${response.statusText}`;
+    try {
+      const errJson = await response.json();
+      if (errJson.detail) errorDetail = errJson.detail;
+    } catch (_) {}
+    throw new Error(`Test suite run failed: ${errorDetail}`);
+  }
+  return response.json();
+}
+
